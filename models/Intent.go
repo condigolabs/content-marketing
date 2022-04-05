@@ -21,6 +21,10 @@ type LatestProduct struct {
 	GenerateLink string    `json:"generateLink"`
 }
 
+type ImageIntent struct {
+	Label string
+	Image string
+}
 type Intent struct {
 	Date    time.Time
 	Country string
@@ -32,12 +36,13 @@ func (i *Intent) Append(l LabelIntent) {
 }
 
 type LabelIntent struct {
-	Label  string  `json:"dimensions"`
-	Cat    string  `json:"cat"`
-	Locale string  `json:"locale"`
-	AvgBid float64 `json:"avgbid"`
-	Count  int64   `json:"count"`
-	Score  float64 `json:"score"`
+	Label        string  `json:"dimensions"`
+	Cat          string  `json:"cat"`
+	Locale       string  `json:"locale"`
+	AvgBid       float64 `json:"avgbid"`
+	Count        int64   `json:"count"`
+	Score        float64 `json:"score"`
+	GenerateLink string  `json:"generateLink"`
 }
 
 type Product struct {

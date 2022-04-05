@@ -5,14 +5,14 @@
 <body>
 {{ range .}}
 
-<p>{{.Description}}</p>
 <h3>
     {{ range .InputText}}
     <p>{{.}}</p>
     {{end}}
 </h3>
+<p>{{.Description}}</p>
 <p>
-    <img width="300px" height="250px" src="{{.Image}}">
+    <img width="300px" height="300px" src="{{.Image}}">
 </p>
 {{end}}
 </body>

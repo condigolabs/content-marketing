@@ -40,5 +40,5 @@ func main() {
 		c.HTML(http.StatusOK, "default.tmpl.html", gin.H{"Message": "hello world"})
 	})
 	controller.InitRouter(router)
-	_ = router.Run(":8080")
+	_ = router.Run(":8081")
 }

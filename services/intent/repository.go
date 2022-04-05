@@ -20,4 +20,5 @@ type Intent interface {
 	GenerateDocument(p DocHeadlines) (models.GenerateData, error)
 	LoadGenerated(requestId string) ([]models.GenerateData, error)
 	LoadRequest(p Param) ([]models.Request, error)
+	LoadRandImage(p Param) ([]models.ImageIntent, error)
 }

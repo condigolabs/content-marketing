@@ -16,6 +16,7 @@ type Param struct {
 	Locale    string
 	Value     string
 	RequestId string
+	Tag       string
 }
 
 func (dw *ConcreteIntent) CreateIntentTable(p Param) (string, error) {
@@ -120,7 +121,46 @@ func (dw *ConcreteIntent) LoadLatestProducts(p Param) ([]models.LatestProduct, e
 	}
 	return ret, err
 }
+func (dw *ConcreteIntent) LoadRandImage(p Param) ([]models.ImageIntent, error) {
+	var buf bytes.Buffer
+	err := dw.templates.ExecuteTemplate(&buf, "load_rand_image.sql", p)
 
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf(buf.String())
+	q := dw.client.Query(buf.String())
+	q.Priority = bigquery.InteractivePriority
+	q.QueryConfig.UseLegacySQL = false
+	ctx := context.Background()
+	// Start the job.
+	job, err := q.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	status, err := job.Wait(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := status.Err(); err != nil {
+		return nil, err
+	}
+
+	ret := make([]models.ImageIntent, 0)
+	it, err := job.Read(ctx)
+	for {
+		var row models.ImageIntent
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		ret = append(ret, row)
+	}
+	return ret, err
+}
 func (dw *ConcreteIntent) LoadLatestIntent(p Param) (*models.Intent, error) {
 	var buf bytes.Buffer
 	err := dw.templates.ExecuteTemplate(&buf, "load_latest_intent.sql", p)

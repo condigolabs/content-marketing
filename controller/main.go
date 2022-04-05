@@ -16,7 +16,7 @@ func InitRouter(engine *gin.Engine) {
 	intents.GET("bids", GetLatestProducts)
 	intents.GET("intents", GetLatestIntent)
 	intents.GET("request/:id/:ext", GetRequest)
-	intents.GET("cat/:tag", GetRequest)
+	intents.GET("cat/:tag/:ext", GetFromTag)
 }
 
 type Dimensions struct {
@@ -27,6 +27,7 @@ type Dimensions struct {
 type Tag struct {
 	Value string `json:"value"`
 	Count int64  `json:"count"`
+	Link  string `json:"link"`
 }
 type LatestProducts struct {
 	Dimensions []Dimensions           `json:"dimensions"`
@@ -56,27 +57,30 @@ func GetLatestProducts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
 		return
 	}
-	domain, err := service.LoadLatestDomain(param)
+
+	/*domain, err := service.LoadLatestDomain(param)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
 		return
-	}
+	}*/
 	vTags := make([]Tag, len(tags.Labels))
 	for i := 0; i < len(vTags); i++ {
 		vTags[i] = Tag{
 			Value: tags.Labels[i].Cat,
 			Count: tags.Labels[i].Count,
+			Link:  fmt.Sprintf("https://content-marketing.cdglb.com/intents/cat/%s/html", tags.Labels[i].Cat),
 		}
 	}
-	d := make([]string, len(domain))
+	/*d := make([]string, len(domain))
 	for i := 0; i < len(d); i++ {
 		d[i] = domain[i].Domain
-	}
+	}*/
 
 	c.JSON(http.StatusOK, LatestProducts{
-		Tags: vTags,
-		Dimensions: []Dimensions{{
+		Tags:       vTags,
+		Dimensions: []Dimensions{},
+		/*Dimensions: []Dimensions{{
 			Type:   "domain",
 			Label:  "domain",
 			Values: d,
@@ -86,7 +90,7 @@ func GetLatestProducts(c *gin.Context) {
 				Label:  "country",
 				Values: []string{"FRA", "USA"},
 			},
-		},
+		},*/
 		Bids: ret,
 	})
 }
@@ -98,6 +102,10 @@ func GetLatestIntent(c *gin.Context) {
 		LastHours: 120,
 		Locale:    "fr-FR",
 	})
+
+	for i := 0; i < len(ret.Labels); i++ {
+		ret.Labels[i].GenerateLink = fmt.Sprintf("https://content-marketing.cdglb.com/intents/cat/%s/html", ret.Labels[i].Cat)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
 		return
@@ -155,6 +163,41 @@ func GetRequest(c *gin.Context) {
 					err = service.FlushEntitySync(&d)
 				}
 				time.Sleep(500 * time.Millisecond)
+			}
+		}
+	}
+	if method == "html" {
+		c.HTML(http.StatusOK, "default.tmpl.html", ret)
+	} else {
+		c.JSON(http.StatusOK, ret)
+	}
+}
+
+func GetFromTag(c *gin.Context) {
+
+	service := startup.GetIntent()
+
+	tag := c.Param("tag")
+	method := c.Param("ext")
+	//tag := c.Param("tag")
+	var ret []models.GenerateData
+
+	if len(tag) > 0 {
+
+		img, err := service.LoadRandImage(intent.Param{
+			Tag: tag,
+		})
+		if err == nil {
+			for _, i := range img {
+				headline := intent.DocHeadlines{}
+				headline.Labels = append(headline.Labels, tag)
+				headline.Labels = append(headline.Labels, i.Label)
+				d, err := service.GenerateDocument(headline)
+				if err == nil {
+					d.Image = i.Image
+					ret = append(ret, d)
+					err = service.FlushEntitySync(&d)
+				}
 			}
 		}
 	}
