@@ -49,7 +49,7 @@ func GetLatestProducts(c *gin.Context) {
 	}
 
 	for i := 0; i < len(ret); i++ {
-		ret[i].GenerateLink = fmt.Sprintf("http://api.condigolabs.com:8080/intents/request/%s", ret[i].RequestId)
+		ret[i].GenerateLink = fmt.Sprintf("https://content-marketing.cdglb.com/intents/request/%s/html", ret[i].RequestId)
 	}
 	tags, err := service.LoadLatestIntent(param)
 	if err != nil {
