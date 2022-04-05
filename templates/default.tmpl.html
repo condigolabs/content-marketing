@@ -1,0 +1,19 @@
+<html>
+<head>
+
+</head>
+<body>
+{{ range .}}
+
+<p>{{.Description}}</p>
+<h3>
+    {{ range .InputText}}
+    <p>{{.}}</p>
+    {{end}}
+</h3>
+<p>
+    <img width="300px" height="250px" src="{{.Image}}">
+</p>
+{{end}}
+</body>
+</html>
