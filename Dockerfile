@@ -17,7 +17,7 @@ ENV PORT=8080 \
     GIN_MODE=release \
     ENV=production \
     APPNAME="content-marketing" \
-    APPVERSION=${appVersion:-v0.0.0} \
+    APPVERSION="initial" \
     ENV=production
 
 
