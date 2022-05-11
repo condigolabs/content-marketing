@@ -38,6 +38,9 @@ func (i *Intent) Append(l LabelIntent) {
 type LabelIntent struct {
 	Label        string  `json:"dimensions"`
 	Cat          string  `json:"cat"`
+	Root         string  `json:"root"`
+	SubCat       string  `json:"subCat"`
+	ID           int64   `json:"cat_id"`
 	Locale       string  `json:"locale"`
 	AvgBid       float64 `json:"avgbid"`
 	Count        int64   `json:"count"`

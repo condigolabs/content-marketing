@@ -287,3 +287,50 @@ func (dw *ConcreteIntent) LoadRequest(p Param) ([]models.Request, error) {
 	}
 	return ret, err
 }
+
+func (dw *ConcreteIntent) LoadRawData(ctx context.Context, p Param, out chan models.RawData) error {
+	var buf bytes.Buffer
+	err := dw.templates.ExecuteTemplate(&buf, "load_rawdata.sql", p)
+
+	if err != nil {
+		return err
+	}
+	fmt.Printf(buf.String())
+	q := dw.client.Query(buf.String())
+	q.Priority = bigquery.InteractivePriority
+	q.QueryConfig.UseLegacySQL = false
+
+	// Start the job.
+	job, err := q.Run(ctx)
+	if err != nil {
+		return err
+	}
+	status, err := job.Wait(ctx)
+	if err != nil {
+		return err
+	}
+	if err := status.Err(); err != nil {
+		return err
+	}
+
+	it, err := job.Read(ctx)
+	for {
+		var row models.RawData
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		select {
+		case out <- row:
+		case <-ctx.Done():
+			return nil
+		}
+	}
+	return nil
+}

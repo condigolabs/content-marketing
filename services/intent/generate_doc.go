@@ -15,13 +15,39 @@ import (
 	"strings"
 )
 
+type PayloadTemplate struct {
+	InputTitle string
+	InputLabel string
+	Articles   []models.Article
+}
+type ParamGeneration struct {
+	Model              string
+	Lang               string
+	InputText          string
+	MinLength          int
+	MaxLength          int
+	LengthNoInput      bool
+	EndSequence        string
+	RemoveInput        bool
+	DoSample           bool
+	NumBeams           int
+	EarlyStopping      bool
+	NoRepeatNgramSize  int
+	NumReturnSequences int
+	TopK               int
+	TopP               float64
+	Temperature        float64
+	RepetitionPenalty  float64
+	LengthPenalty      float64
+	RemoveEndSequence  bool
+}
 type DocHeadlines struct {
 	Labels []string
 }
 
-func (dw *ConcreteIntent) createClient() (*nlpcloud.Client, string, string) {
-	model := "finetuned-gpt-neox-20b"
-	lang := "fr"
+func (dw *ConcreteIntent) createClient(model string, lang string) (*nlpcloud.Client, string, string) {
+	/*model := "finetuned-gpt-neox-20b"
+	lang := "fr"*/
 	return nlpcloud.NewClient(&http.Client{}, model, "6945baaef867c37430dfbf92045f9bb6485ab73c", true, lang), model, lang
 
 }
@@ -75,7 +101,7 @@ func (dw *ConcreteIntent) GenerateDocument(p DocHeadlines) (models.GenerateData,
 
 	//k1, _ := keywords.Extract(p.Title)
 
-	client, model, lang := dw.createClient()
+	client, model, lang := dw.createClient("finetuned-gpt-neox-20b", "fr")
 
 	if len(p.Labels) > 10 {
 		p.Labels = p.Labels[:10]
@@ -101,4 +127,54 @@ func (dw *ConcreteIntent) GenerateDocument(p DocHeadlines) (models.GenerateData,
 		Description: r.GeneratedText,
 	}, nil
 
+}
+
+func (dw *ConcreteIntent) GenerateArticles(p ParamGeneration) (models.GenerateData, error) {
+
+	client, model, lang := dw.createClient(p.Model, p.Lang)
+
+	r, err := client.Generation(nlpcloud.GenerationParams{
+		Text:               p.InputText,
+		MinLength:          &p.MinLength,
+		MaxLength:          &p.MaxLength,
+		LengthNoInput:      &p.LengthNoInput,
+		EndSequence:        &p.EndSequence,
+		RemoveInput:        &p.RemoveInput,
+		DoSample:           &p.DoSample,
+		NumBeams:           &p.NumBeams,
+		EarlyStopping:      &p.EarlyStopping,
+		NoRepeatNgramSize:  &p.NoRepeatNgramSize,
+		NumReturnSequences: &p.NumReturnSequences,
+		TopK:               &p.TopK,
+		TopP:               &p.TopP,
+		Temperature:        &p.Temperature,
+		RepetitionPenalty:  &p.RepetitionPenalty,
+		LengthPenalty:      &p.LengthPenalty,
+		RemoveEndSequence:  &p.RemoveEndSequence,
+	})
+	if err != nil {
+		logrus.WithError(err).Errorf("Failed to generate documents")
+		return models.GenerateData{}, err
+	}
+	logrus.Infof("Generated  {%s} ", r.GeneratedText)
+
+	return models.GenerateData{
+		InputText:   []string{p.InputText},
+		Model:       model,
+		Language:    lang,
+		Method:      "Generation",
+		Description: r.GeneratedText,
+	}, nil
+
+}
+
+func (dw *ConcreteIntent) ApplyTemplate(a PayloadTemplate) (string, error) {
+	var buf bytes.Buffer
+	err := dw.templates.ExecuteTemplate(&buf, "blog_fewshot.txt", a)
+	if err != nil {
+	}
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

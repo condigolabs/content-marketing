@@ -1,6 +1,7 @@
 package intent
 
 import (
+	"context"
 	"github.com/condigolabs/content-marketing/models"
 	"io"
 )
@@ -21,4 +22,7 @@ type Intent interface {
 	LoadGenerated(requestId string) ([]models.GenerateData, error)
 	LoadRequest(p Param) ([]models.Request, error)
 	LoadRandImage(p Param) ([]models.ImageIntent, error)
+	LoadRawData(ctx context.Context, p Param, out chan models.RawData) error
+	LookupArticles(param LookupArticleParam) ([]models.Article, error)
+	ApplyTemplate(a PayloadTemplate) (string, error)
 }

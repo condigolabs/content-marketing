@@ -10,12 +10,12 @@ WITH D AS ( SELECT
     ,(SELECT SAFE_DIVIDE(SUM(CPM),COUNT(*)) FROM UNNEST(Pricing) AS P) AS AvgBid
 FROM `core-ssp.reporting.live_request_full`  as R
 WHERE
-    ResponseStatus IN(200)
+    ResponseStatus IN(200) AND Country  ="{{.Country}}"
 AND
     date >  TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 120 SECOND)
 AND
     DemandId ="criteortb"
 )
 SELECT * FROM D
-WHERE Product is NOT NULL  AND Product.UniqueId NOT LIKE "fr-FR%"
+WHERE Product is NOT NULL
 ORDER BY Date DESC LIMIT 50

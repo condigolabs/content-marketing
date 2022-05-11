@@ -10,13 +10,15 @@ import (
 	"time"
 )
 
+var router *gin.Engine
+
 func main() {
 	config.LogInit()
 	startup.GetIntent()
 	startup.GetGenerator()
 	defer func() { startup.Close() }()
 
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.DebugMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(cors.New(cors.Config{
@@ -40,5 +42,5 @@ func main() {
 		c.HTML(http.StatusOK, "default.tmpl.html", gin.H{"Message": "hello world"})
 	})
 	controller.InitRouter(router)
-	_ = router.Run(":8080")
+	_ = router.Run(":8081")
 }
