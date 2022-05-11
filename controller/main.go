@@ -22,21 +22,15 @@ var root = "https://content-marketing.cdglb.com" // "http://127.0.0.1:8081"
 
 func InitRouter(engine *gin.Engine) {
 	intents := engine.Group("/intents")
-
 	intents.GET("bids", GetLatestProducts)
 	intents.GET("intents", GetLatestIntent)
 	intents.GET("request/:id/:ext", GetArticlesFromRequest)
 	intents.GET("cat/:tag/:ext", GetFromTag)
-
-	reader := engine.Group("/reader")
-	reader.GET("view", Read)
-	reader.GET("parseall", Parse)
-
-	reader.GET("lookup", LookupArticles)
-	reader.GET("generate", GenerateArticles)
-
-	reader.GET("test", TestTemplate)
-
+	intents.GET("view", Read)
+	intents.GET("parseall", Parse)
+	intents.GET("lookup", LookupArticles)
+	intents.GET("generate", GenerateArticles)
+	intents.GET("test", TestTemplate)
 }
 
 type Dimensions struct {
@@ -80,7 +74,7 @@ func GetLatestProducts(c *gin.Context) {
 	}
 	vTags := make([]Tag, len(tags.Labels))
 	for i := 0; i < len(vTags); i++ {
-		u, _ := url.Parse(fmt.Sprintf("%s/reader/generate", root))
+		u, _ := url.Parse(fmt.Sprintf("%s/intents/generate", root))
 
 		q := u.Query()
 		q.Add("t", tags.Labels[i].Label)
