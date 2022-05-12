@@ -1,0 +1,1 @@
+SELECT "USA" as Country,* FROM `core-ssp.machinelearning.usa_products_samples`  ORDER BY RAND() LIMIT 50

@@ -84,9 +84,9 @@ func (dw *ConcreteIntent) LoadIntent(p Param) (models.Intent, error) {
 }
 
 func (dw *ConcreteIntent) LoadLatestProducts(p Param) ([]models.LatestProduct, error) {
-	return []models.LatestProduct{}, nil
+
 	var buf bytes.Buffer
-	err := dw.templates.ExecuteTemplate(&buf, "load_latest_product.sql", p)
+	err := dw.templates.ExecuteTemplate(&buf, "load_latest_bid_usa.sql", p)
 
 	if err != nil {
 		return nil, err

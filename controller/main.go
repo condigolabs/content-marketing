@@ -66,8 +66,14 @@ func GetLatestProducts(c *gin.Context) {
 	}
 
 	for i := 0; i < len(ret); i++ {
+		u, _ := url.Parse(fmt.Sprintf("%s/intents/generate", root))
 
-		ret[i].GenerateLink = fmt.Sprintf("%s/intents/request/%s/html", root, ret[i].RequestId)
+		q := u.Query()
+		q.Add("t", ret[i].Product.Label)
+		q.Add("lid", fmt.Sprintf("%d", ret[i].LabelId))
+		q.Add("w", "true")
+		u.RawQuery = q.Encode()
+		ret[i].GenerateLink = u.String() //fmt.Sprintf("%s/intents/request/%s/html", root, ret[i].RequestId)
 	}
 	tags, err := service.LoadLatestIntent(param)
 	if err != nil {

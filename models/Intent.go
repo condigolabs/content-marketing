@@ -18,6 +18,7 @@ type LatestProduct struct {
 	Context      string    `json:"context"`
 	Product      Product   `json:"product"`
 	AvgBid       float64   `json:"avgbid"`
+	LabelId      int64     `json:"labelId"`
 	GenerateLink string    `json:"generateLink"`
 }
 
