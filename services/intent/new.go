@@ -45,7 +45,8 @@ func New() (Intent, error) {
 	for _, file := range files {
 		b, err := ret.box.Find(file)
 		if err == nil {
-			ret.templates.New(file).Parse(string(b))
+			_, err := ret.templates.New(file).Parse(string(b))
+			logrus.WithError(err).Errorf("tempate dead ")
 		}
 	}
 
@@ -61,6 +62,10 @@ func New() (Intent, error) {
 	}
 
 	err = ret.CreateSchema(&models.GeneratedArticle{})
+	if err != nil {
+		logrus.WithError(err).Errorf("error creating table")
+	}
+	err = ret.CreateSchema(&models.Result{})
 	if err != nil {
 		logrus.WithError(err).Errorf("error creating table")
 	}

@@ -17,6 +17,7 @@ type Param struct {
 	Value     string
 	RequestId string
 	Tag       string
+	LabelId   int64
 }
 
 func (dw *ConcreteIntent) CreateIntentTable(p Param) (string, error) {
@@ -164,7 +165,8 @@ func (dw *ConcreteIntent) LoadRandImage(p Param) ([]models.ImageIntent, error) {
 }
 func (dw *ConcreteIntent) LoadLatestIntent(p Param) (*models.Intent, error) {
 	var buf bytes.Buffer
-	err := dw.templates.ExecuteTemplate(&buf, "load_latest_intent.sql", p)
+	//err := dw.templates.ExecuteTemplate(&buf, "load_latest_intent.sql", p)
+	err := dw.templates.ExecuteTemplate(&buf, "load_top_categories_usa.sql", p)
 
 	if err != nil {
 		return nil, err
@@ -334,4 +336,98 @@ func (dw *ConcreteIntent) LoadRawData(ctx context.Context, p Param, out chan mod
 		}
 	}
 	return nil
+}
+
+func (dw *ConcreteIntent) LoadCategories(ctx context.Context, p Param, out chan models.Categories) error {
+	var buf bytes.Buffer
+	err := dw.templates.ExecuteTemplate(&buf, "load_top_categories_usa.sql", p)
+
+	if err != nil {
+		return err
+	}
+	fmt.Printf(buf.String())
+	q := dw.client.Query(buf.String())
+	q.Priority = bigquery.InteractivePriority
+	q.QueryConfig.UseLegacySQL = false
+
+	// Start the job.
+	job, err := q.Run(ctx)
+	if err != nil {
+		return err
+	}
+	status, err := job.Wait(ctx)
+	if err != nil {
+		return err
+	}
+	if err := status.Err(); err != nil {
+		return err
+	}
+
+	it, err := job.Read(ctx)
+	for {
+		var row models.Categories
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		select {
+		case out <- row:
+		case <-ctx.Done():
+			return nil
+		}
+	}
+	return nil
+}
+
+func (dw *ConcreteIntent) LoadBidRequest(p Param) ([]models.BidResponse, error) {
+	var buf bytes.Buffer
+
+	tmpl := "load_bidResponse.sql"
+	if p.LabelId > 0 {
+		tmpl = "load_bidResponse_from_label.sql"
+	}
+
+	err := dw.templates.ExecuteTemplate(&buf, tmpl, p)
+
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf(buf.String())
+	q := dw.client.Query(buf.String())
+	q.Priority = bigquery.InteractivePriority
+	q.QueryConfig.UseLegacySQL = false
+	ctx := context.Background()
+	// Start the job.
+	job, err := q.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	status, err := job.Wait(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := status.Err(); err != nil {
+		return nil, err
+	}
+
+	ret := make([]models.BidResponse, 0)
+	it, err := job.Read(ctx)
+	for {
+		var row models.BidResponse
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		ret = append(ret, row)
+	}
+	return ret, err
 }

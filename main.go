@@ -18,7 +18,7 @@ func main() {
 	startup.GetGenerator()
 	defer func() { startup.Close() }()
 
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.DebugMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(cors.New(cors.Config{

@@ -216,16 +216,23 @@
 										</br>
 										{{.HeadLine}}
 									</h3>
-									<p class="card-text">
-										{{ range .Lines}}
-										{{.}}<br/>
+									{{ range .Lines}}
+										{{if eq .Format "header"}}
+											<h5 class="card-text" >
+												<i>{{.Text}}</i>
+											</h5>
 										{{end}}
-									</p>
+										{{if eq .Format "paragraph"}}
+										<p class="card-text">
+											{{.Text}}
+										</p>
+										{{end}}
+									{{end}}
 								</div>
 							</div>
 				</div>
 				<div class="col-md-4">
-					<div class="cdglb-placement" tagid="{{.Id}}" tpl="landscape" position="1" count="2" mad="false"/>
+					{{ template "ads" .Ads }}
 				</div>
 			</div>
 		</div>
@@ -254,11 +261,5 @@
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-<script type="text/javascript">(function(w,c,o){
-	const n = '\x73\x63\x72\x69\x70\x74', x = w.document.getElementsByTagName(n)[0],
-			s = window.document.createElement(n);s.src='//'+c+'/markup/'+o+'/feed.js';s.async=!0;x.parentElement.insertBefore(s,x);
-}(window, 'scripts.cdglb.com', 'btovgav20enqfj2aiet0'));
-</script>
-
 </body>
 </html>

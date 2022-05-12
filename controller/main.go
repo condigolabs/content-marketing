@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var root = "https://content-marketing.cdglb.com" // "http://127.0.0.1:8081"
+var root = "https://content-marketing.cdglb.com"
 
 func InitRouter(engine *gin.Engine) {
 	intents := engine.Group("/intents")
@@ -29,8 +29,10 @@ func InitRouter(engine *gin.Engine) {
 	intents.GET("view", Read)
 	intents.GET("parseall", Parse)
 	intents.GET("lookup", LookupArticles)
-	intents.GET("generate", GenerateArticles)
+	intents.GET("generate", GenerateArticles1)
 	intents.GET("test", TestTemplate)
+	intents.GET("bidresponse", LoadBidRequest)
+	intents.GET("categories", LoadCategories)
 }
 
 type Dimensions struct {
@@ -78,6 +80,7 @@ func GetLatestProducts(c *gin.Context) {
 
 		q := u.Query()
 		q.Add("t", tags.Labels[i].Label)
+		q.Add("lid", fmt.Sprintf("%d", tags.Labels[i].ID))
 		q.Add("w", "true")
 		u.RawQuery = q.Encode()
 
@@ -214,6 +217,7 @@ type ReadParam struct {
 	Wide       bool   `form:"w"`
 	Title      string `form:"t"`
 	Label      string `form:"c"`
+	LabelId    int64  `form:"lid"`
 }
 
 func Parse(c *gin.Context) {
@@ -280,7 +284,7 @@ func LookupArticles(c *gin.Context) {
 		p.Fields = "Label,Title"
 	}
 
-	ret, err := service.LookupArticles(p)
+	ret, err := service.LookupArticlesNew(p)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 		return
@@ -325,17 +329,118 @@ func ToHtml(c *gin.Context, ret []models.Article) {
 		})
 	}
 	for idx, a := range ret {
-		payload.Articles = append(payload.Articles, Item{
+		i := Item{
 			Id:       fmt.Sprintf("placement-%d", idx),
 			Title:    a.Title,
 			Image:    a.Image,
 			HeadLine: a.Excerpt,
-			Lines:    a.Lines,
-		})
+		}
+
+		for idx, l := range a.Lines {
+			format := "header"
+			if idx > 0 {
+				format = "paragraph"
+				if rand.Float64() < 0.2 {
+					format = "header"
+				}
+			}
+			i.Lines = append(i.Lines, Line{
+				Text:   l,
+				Format: format,
+			})
+
+		}
+		payload.Articles = append(payload.Articles, i)
 	}
 	c.HTML(http.StatusOK, "index.tmpl.html", payload)
 }
-func GenerateArticles(c *gin.Context) {
+func GenerateArticles1(c *gin.Context) {
+	service := startup.GetIntent()
+	var m ReadParam
+	c.ShouldBindQuery(&m)
+
+	p := intent.LookupArticleParam{
+		QueryTerms: m.QueryTerms,
+		LabelId:    m.LabelId,
+	}
+
+	if m.Wide {
+		p.Fields = "Label,Title,TextContent"
+	} else {
+		p.Fields = "Label,Title"
+	}
+	if len(p.QueryTerms) == 0 {
+		p.QueryTerms = fmt.Sprintf("%s,%s", m.Title, m.Label)
+	}
+	ret, err := service.LookupArticlesNew(p)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if len(ret) > 0 {
+		payload := PayloadArticleContent{
+			PublisherName:      "IlliPress",
+			PublisherLogo:      "https://s3.us-east-1.amazonaws.com/cdglb-content-server/img/sites/J2CPaXFfi/5gEiWdJKZ_full.jpg",
+			ArticleTitle:       ret[0].Title,
+			ArticleDescription: ret[0].Excerpt,
+			Author:             "Magic Condigolabs ",
+			MainImage:          ret[0].GetImage(),
+			Quote: Item{
+				Title:    PickQuotes(),
+				HeadLine: PickQuotes(),
+			},
+		}
+
+		for _, l := range strings.Split(ret[0].Label, ">") {
+
+			payload.BreadCrumb = append(payload.BreadCrumb, Action{
+				Name: l,
+				Link: "#",
+			})
+		}
+		for idx, a := range ret {
+			i := Item{
+				Id:       fmt.Sprintf("placement-%d", idx),
+				Title:    a.Title,
+				Image:    a.GetImage(),
+				HeadLine: a.Excerpt,
+			}
+
+			bids, err := service.LoadBidRequest(intent.Param{
+				LabelId: a.LabelID,
+				Locale:  "en-US",
+			})
+			if err == nil && len(bids) > 0 {
+
+				i.Ads = bids[0]
+				i.Ads.Id = fmt.Sprintf("placement-%d", idx)
+				i.Ads.Brand = bids[0].Products[0].Brand
+				i.Ads.AdChoice = "https://privacy.eu.criteo.com/adchoice"
+			}
+
+			for idx, l := range a.Lines {
+				format := "header"
+				if idx > 0 {
+					format = "paragraph"
+					if rand.Float64() < 0.2 {
+						format = "header"
+					}
+				}
+				i.Lines = append(i.Lines, Line{
+					Text:   l,
+					Format: format,
+				})
+
+			}
+			payload.Articles = append(payload.Articles, i)
+		}
+		c.HTML(http.StatusOK, "index.tmpl.html", payload)
+		return
+	}
+	TestTemplate(c)
+
+}
+func GenerateArticlesX(c *gin.Context) {
 	service := startup.GetIntent()
 	var m ReadParam
 	p := intent.LookupArticleParam{
@@ -377,13 +482,31 @@ func GenerateArticles(c *gin.Context) {
 			})
 		}
 		for idx, a := range ret {
-			payload.Articles = append(payload.Articles, Item{
+			i := Item{
 				Id:       fmt.Sprintf("placement-%d", idx),
 				Title:    a.Title,
-				Image:    PickImage(),
+				Image:    a.Image,
 				HeadLine: a.Excerpt,
-				Lines:    a.Lines,
-			})
+				Lines:    nil,
+				Actions:  nil,
+				Ads:      models.BidResponse{},
+			}
+
+			for idx, l := range a.Lines {
+				format := "header"
+				if idx > 0 {
+					format = "paragraph"
+					if rand.Float64() < 0.2 {
+						format = "header"
+					}
+				}
+				i.Lines = append(i.Lines, Line{
+					Text:   l,
+					Format: format,
+				})
+
+			}
+			payload.Articles = append(payload.Articles, i)
 		}
 		c.HTML(http.StatusOK, "index.tmpl.html", payload)
 		return
@@ -433,13 +556,18 @@ type Action struct {
 	Name string
 	Link string
 }
+type Line struct {
+	Text   string
+	Format string
+}
 type Item struct {
 	Id       string
 	Title    string
 	Image    string
 	HeadLine string
-	Lines    []string
+	Lines    []Line
 	Actions  []Action
+	Ads      models.BidResponse
 }
 
 type Placement struct {
@@ -680,51 +808,50 @@ var quotes = []string{
 }
 
 type T struct {
-	Lines []string
+	Lines []Line
 }
 
 var Articles = []T{
 	{
-		Lines: []string{
-			"including a variety of pot and planter ideas for your garden!",
-			"When it comes to gardening, pots and planters are a gardener’s best friend.",
-			"They can add color, life, and personality to any garden, and can be used to grow a variety of plants, flowers, and vegetables.",
-			"There are a variety of different pots and planters that you can use in your garden, and the options are endless. Here are a few ideas to get you started:",
-			".1. Clay pots: Clay pots are a classic choice for pots and planters. They come in a variety of shapes and sizes, and are a great option for both indoor and outdoor gardens..",
-			"2. Ceramic pots: Ceramic pots are another popular choice for pots and planters. They come in a variety of colors and styles, and are a great option for both indoor and outdoor gardens..",
-			"3. Plastic pots: Plastic pots are a budget-friendly option, and are a great choice for both indoor and outdoor gardens. They come in a variety of shapes and sizes, and are a great option for both plants and flowers..",
-			"4. Wooden planters: Wooden planters are a beautiful option for outdoor gardens, and can be used to grow a variety of plants and flowers..",
-			"5. Metal planters: Metal planters are a great option for both indoor and outdoor gardens, and come in a variety of shapes and sizes..",
-			"6. Stone pots: Stone pots are a beautiful option for outdoor gardens, and can be used to grow a variety of plants and flowers..",
-			"7. Hanging pots: Hanging pots are a great option for both indoor and outdoor gardens, and are perfect for growing plants and flowers..",
-			"8. Window boxes: Window boxes are a great option for both indoor and outdoor gardens, and are perfect for growing plants and flowers..",
-			"9. Self-watering pots: Self-watering pots are a great option for both indoor and outdoor gardens, and are perfect for growing plants that need a lot of water.",
-			"10. And finally don’t forget to add some personality to your pots and planters with a little bit of paint or some fun accessories!",
+		Lines: []Line{
+			{
+				Text:   "including a variety of pot and planter ideas for your garden!",
+				Format: "header",
+			},
+			{Text: "When it comes to gardening, pots and planters are a gardener’s best friend.",
+				Format: "paragraph"},
+			{Text: "They can add color, life, and personality to any garden, and can be used to grow a variety of plants, flowers, and vegetables.",
+				Format: "paragraph"},
+			{Text: "There are a variety of different pots and planters that you can use in your garden, and the options are endless. Here are a few ideas to get you started:",
+				Format: "header"},
+			{Text: ".1. Clay pots: Clay pots are a classic choice for pots and planters. They come in a variety of shapes and sizes, and are a great option for both indoor and outdoor gardens..",
+				Format: "paragraph"},
+			{Text: "2. Ceramic pots: Ceramic pots are another popular choice for pots and planters. They come in a variety of colors and styles, and are a great option for both indoor and outdoor gardens..",
+				Format: "paragraph"},
+			{Text: "3. Plastic pots: Plastic pots are a budget-friendly option, and are a great choice for both indoor and outdoor gardens. They come in a variety of shapes and sizes, and are a great option for both plants and flowers..",
+				Format: "paragraph"},
+			{Text: "4. Wooden planters: Wooden planters are a beautiful option for outdoor gardens, and can be used to grow a variety of plants and flowers..", Format: "paragraph"},
+			{Text: "5. Metal planters: Metal planters are a great option for both indoor and outdoor gardens, and come in a variety of shapes and sizes..", Format: "paragraph"},
+			{Text: "6. Stone pots: Stone pots are a beautiful option for outdoor gardens, and can be used to grow a variety of plants and flowers..", Format: "paragraph"},
+			{Text: "7. Hanging pots: Hanging pots are a great option for both indoor and outdoor gardens, and are perfect for growing plants and flowers..", Format: "paragraph"},
+			{Text: "8. Window boxes: Window boxes are a great option for both indoor and outdoor gardens, and are perfect for growing plants and flowers..", Format: "paragraph"},
+			{Text: "9. Self-watering pots: Self-watering pots are a great option for both indoor and outdoor gardens, and are perfect for growing plants that need a lot of water.", Format: "paragraph"},
+			{Text: "10. And finally don’t forget to add some personality to your pots and planters with a little bit of paint or some fun accessories!", Format: "paragraph"},
 		},
 	},
 	{
-		Lines: []string{
-			"Pots & Planters",
-
-			"What could be more cheerful than a pot of brightly blooming flowers on your porch or patio? Flower pots come in all shapes, sizes, and colors, and can be used to add a splash of color to any outdoor space.",
-
-			"Choose pots that are large enough to accommodate the plants you want to grow, and make sure the pot has drainage holes so the water can escape. You may also want to consider adding a potting mix to the soil to improve drainage and help the soil retain moisture.",
-
-			"When selecting plants for your pots and planters, be sure to choose ones that are suited for your climate and growing conditions. If you live in a cold climate, choose plants that can tolerate frosty weather, and if you live in a warmer climate, choose plants that can tolerate hot weather.",
-
-			"Hundreds of beautiful flowers and plants are available for planting in pots and planters, so you're sure to find ones that will suit your taste and your climate.Here are a few of our favorites:",
-
-			"Petunias are a popular choice for flower pots, and come in a variety of colors including pink, red, purple, and white. They thrive in sunny locations and can tolerate some cold weather.",
-
-			"Lantanas are another popular choice, and come in a variety of colors including yellow, red, orange, and pink. They also thrive in sunny locations, and can tolerate some cold weather.",
-
-			"Begonias are attractive plants that come in a variety of colors including pink, red, white, and orange. They do well in shady locations, and can tolerate some cold weather.",
-
-			"Impatiens are brightly colored plants that come in a variety of colors including pink, red, purple, and white. They do well in shady locations, and can tolerate some cold weather.",
-
-			"When planting flowers in pots and planters, be sure to keep the plants well watered, especially during hot weather. You may also want to fertilize the plants every few weeks.",
-
-			"A pot of brightly blooming flowers can add color and charm to any outdoor space, so why not add a few pots of flowers to your porch or patio this summer?",
+		Lines: []Line{
+			{Text: "Pots & Planters", Format: "header"},
+			{Text: "What could be more cheerful than a pot of brightly blooming flowers on your porch or patio? Flower pots come in all shapes, sizes, and colors, and can be used to add a splash of color to any outdoor space.", Format: "paragraph"},
+			{Text: "Choose pots that are large enough to accommodate the plants you want to grow, and make sure the pot has drainage holes so the water can escape. You may also want to consider adding a potting mix to the soil to improve drainage and help the soil retain moisture.", Format: "paragraph"},
+			{Text: "When selecting plants for your pots and planters, be sure to choose ones that are suited for your climate and growing conditions. If you live in a cold climate, choose plants that can tolerate frosty weather, and if you live in a warmer climate, choose plants that can tolerate hot weather.", Format: "paragraph"},
+			{Text: "Hundreds of beautiful flowers and plants are available for planting in pots and planters, so you're sure to find ones that will suit your taste and your climate.Here are a few of our favorites:", Format: "paragraph"},
+			{Text: "Petunias are a popular choice for flower pots, and come in a variety of colors including pink, red, purple, and white. They thrive in sunny locations and can tolerate some cold weather.", Format: "header"},
+			{Text: "Lantanas are another popular choice, and come in a variety of colors including yellow, red, orange, and pink. They also thrive in sunny locations, and can tolerate some cold weather.", Format: "paragraph"},
+			{Text: "Begonias are attractive plants that come in a variety of colors including pink, red, white, and orange. They do well in shady locations, and can tolerate some cold weather.", Format: "paragraph"},
+			{Text: "Impatiens are brightly colored plants that come in a variety of colors including pink, red, purple, and white. They do well in shady locations, and can tolerate some cold weather.", Format: "header"},
+			{Text: "When planting flowers in pots and planters, be sure to keep the plants well watered, especially during hot weather. You may also want to fertilize the plants every few weeks.", Format: "paragraph"},
+			{Text: "A pot of brightly blooming flowers can add color and charm to any outdoor space, so why not add a few pots of flowers to your porch or patio this summer?", Format: "paragraph"},
 		},
 	},
 }
@@ -772,6 +899,32 @@ func TestTemplate(c *gin.Context) {
 				HeadLine: PickQuotes(),
 				Lines:    PickArticles().Lines,
 				Actions:  nil,
+				Ads: models.BidResponse{
+					Id:        "placement-1",
+					RequestID: "46db40be-ae5f-4de0-9d33-16d877be8005",
+					Country:   "USA",
+					Brand:     "Fashion Nova",
+					LabelId:   125,
+					DATE:      time.Time{},
+					Locale:    "en-US",
+					Label:     "Apparel & Accessories > Clothing > Dresses",
+					Products: []models.Products{{
+						Title:       "Womens Madeline Embellished Maxi Dress in Black Size XS by Fashion Nova\"",
+						Description: "Available In Black. Sequin Maxi Dress Deep V Neckline Long Sleeve Cut Out Back Zipper Train Lined Stretch Self: 95% Polyester, 5% Spandex Lining: 100% Polyester Imported | Madeline Embellished Maxi Dress in Black size XS by Fashion Nova",
+
+						Domain: "fashionnova.com",
+						Image:  "https://pix.us.criteo.net/img/img?c=3&cq=256&h=800&m=0&partner=23261&q=80&r=0&u=https%3A%2F%2Fcdn.shopify.com%2Fs%2Ffiles%2F1%2F0293%2F9277%2Fproducts%2F08-21-19_MS_HOLIDAY_11822_RG.jpg%3Fv%3D1648771543&ups=1&v=3&w=800&s=yaut253JZRsZoA5aXJ-j6QGN",
+						Target: "https://www.fashionnova.com/products/madeline-embellished-maxi-dress-black?variant=12204970836092&utm_source=criteoARO&utm_medium=display&utm_campaign=Web%20Conversion%20-%20Jul%2021,%202020",
+					},
+						{
+							Title:       "Womens Anastasia Embellished Maxi Dress in Emerald Size 2X by Fashion Nova",
+							Description: "Available In White And Emerald. Maxi Dress Sleeveless Asymmetrical Neckline High Slit Crystal Embellished Detail Lace Up Back Zipper Fabric Content: 95% Polyester 5% Spandex Lining: 95% Polyester 5% Spandex Imported | Anastasia Embellished Maxi Dress in Emerald size 2X by Fashion Nova",
+							Domain:      "fashionnova.com",
+							Image:       "https://pix.us.criteo.net/img/img?c=3&cq=256&h=800&m=0&partner=23261&q=80&r=0&u=https%3A%2F%2Fcdn.shopify.com%2Fs%2Ffiles%2F1%2F0293%2F9277%2Fproducts%2F11-04-21Studio6_SN_RL_11-09-52_8_A81949_Emerald_4207_PB.jpg%3Fv%3D1649118386&ups=1&v=3&w=800&s=7uykgXcQ6LXHHGnupN6o3PWg",
+							Target:      "https://www.fashionnova.com/products/anastasia-embellished-maxi-dress-emerald?variant=39249783160956&utm_source=criteoARO&utm_medium=display&utm_campaign=Web%20Conversion%20-%20Jul%2021,%202020",
+						},
+					},
+				},
 			},
 			{
 				Id:       "placement-2",
@@ -779,6 +932,25 @@ func TestTemplate(c *gin.Context) {
 				Image:    PickImage(),
 				HeadLine: PickQuotes(),
 				Lines:    PickArticles().Lines,
+				Ads: models.BidResponse{
+					RequestID: "46db40be-ae5f-4de0-9d33-16d877be8005",
+					Id:        "placement-2",
+					Brand:     "Fashion Nova",
+					Country:   "USA",
+					LabelId:   5250,
+					Locale:    "en-US",
+					Label:     "Apparel & Accessories > Clothing > One-Pieces > Jumpsuits & Rompers",
+					Products: []models.Products{
+						{
+							Title:       "Womens Jasmine Floral Applique Jumpsuit in White Size XS by Fashion Nova",
+							Description: "Available In Black And White. Jumpsuit Sleeveless Bustier Top Ruffle Detail Floral Applique Flare Leg Zipper Self 1 92% Polyester 8% Spandex Self 2 95% Polyester 5% Spandex Contrast 100% Polyester Imported | Jasmine Floral Applique Jumpsuit in White size XS by Fashion Nova",
+
+							Domain: "fashionnova.com",
+							Image:  "https://pix.us.criteo.net/img/img?c=3&cq=256&h=800&m=0&partner=23261&q=80&r=0&u=https%3A%2F%2Fcdn.shopify.com%2Fs%2Ffiles%2F1%2F0293%2F9277%2Fproducts%2F12-15-21Studio3_ME_KG_14-26-11_44_B02203_White_19531_PB.jpg%3Fv%3D1648774653&ups=1&v=3&w=800&s=Eq1f3QWMHQLPTBvXeOSe7b_C",
+							Target: "https://www.fashionnova.com/products/jasmine-floral-applique-jumpsuit-white?variant=39249782505596&utm_source=criteoARO&utm_medium=display&utm_campaign=Web%20Conversion%20-%20Jul%2021,%202020",
+						},
+					},
+				},
 			},
 			{
 				Id:       "placement-3",

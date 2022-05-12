@@ -1,0 +1,110 @@
+{{define "ads"}}
+<style>
+    #{{ .Id}}.ad-container {
+                           background: #fff;
+                           border-radius: 6px;
+                           border: 2px solid #eee;
+                           transition: all 0.4s cubic-bezier(0.4, 0, 0, 1);
+                       }
+    #{{ .Id}}.ad-container:hover {
+                           box-shadow: 0px 0px 15px 0px rgba(255,255,255,1), 0px 0px 30px rgba(0,0,0,0.1);
+                           transform: translateY(-3px);
+                       }
+    #{{ .Id}}  .brand {
+                             position: relative;
+                         }
+    #{{ .Id}} .brand img {
+                            max-width: 200px;
+                            max-height: 100px;
+                            display: block;
+                            margin: 0 auto;
+                        }
+    #{{ .Id}} .products {
+
+                            background: #fff;
+                            border-radius: 6px;
+                            border: 2px solid #eee;
+                            border-top: 1px solid #eee;
+                            padding: 20px 0;
+                        }
+    #{{ .Id}} .products:before, .products:after {
+                            content: "";
+                            display: table;
+                        }
+    #{{ .Id}} .products:after {
+                            clear: both;
+                        }
+    #{{ .Id}} .product {
+                            width: 100%;
+                            float: left;
+                            text-align: center;
+                            position: relative;
+                        }
+    #{{ .Id}} .product a {
+                            color: #333;
+                            text-decoration: none;
+                        }
+    #{{ .Id}} .product-title {
+                            font-size: 16px;
+                            line-height: 1.2em;
+                            height: 2.4em;
+                            overflow: hidden;
+                            margin-top: 10px;
+                        }
+    #{{ .Id}} .product-image {
+                            height: 0;
+                            padding-top: 50%;
+                            background-size: contain;
+                            background-position: center;
+                            background-repeat: no-repeat;
+                        }
+    #{{ .Id}} .product-price {
+                            color: red;
+                            text-transform: uppercase;
+                            font-family: sans-serif;
+                            font-size: 14px;
+                            margin-top: 5px;
+                        }
+    #{{ .Id}} .product-brand {
+                            color: #abb3b0;
+                            text-transform: capitalize;
+                            font-family: sans-serif;
+                            font-size: 20px;
+                            margin-top: 5px;
+                        }
+    #{{ .Id}} .ad-choice {
+                            display: inline-block;
+                            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAAPBAMAAAD0aukfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowNzgwMTE3NDA3MjA2ODExODcxRkE3ODM3QjNFMzhDRCIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpDQzFBRkI4NTBCQzkxMUUwODVBOURFQjNCOTBCMzU5RiIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpDQzFBRkI4NDBCQzkxMUUwODVBOURFQjNCOTBCMzU5RiIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjA3ODAxMTc0MDcyMDY4MTE4NzFGQTc4MzdCM0UzOENEIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjA3ODAxMTc0MDcyMDY4MTE4NzFGQTc4MzdCM0UzOENEIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+lNTCzgAAADBQTFRF////////6vj71vH2sOXvn9/rjtnnfdTkb8/hYcreU8XbRsHYOb3WILTRFbHOCq3MiZ9pygAAAA90Uk5TALO4vcbL0NTZ3uLn7PX6oKnVFQAAAGRJREFUCNdjEIQBAQZBwfdH4Mz//4/AmH99/m+GMv8I+vxfDGMKxgLZEOY2wbz/E6GigsL/P0KYP4T6/jVCmD/7/jUB1TICmf+BLDDzX+n7RWBzGQT//4FazMD4fjGMCVQCYQIAdnssSdSrlAoAAAAASUVORK5CYII=') no-repeat;
+                            width: 19px;
+                            height: 15px;
+                            opacity: 0.5;
+                            position: absolute;
+                            top: 5px;
+                            right: 5px;
+                        }
+    #{{ .Id}} .ad-choice:hover {
+                            opacity: 1;
+                        }
+
+</style>
+<div id="{{ .Id}}" class="ad-container">
+    <div class="brand">
+        <h1>{{.Brand}}</h1>
+        <a class="ad-choice" target="_blank" href="{{.AdChoice }}"></a>
+    </div>
+    <div class="products">
+        {{range  .Products}}
+        <div class="product">
+            <a target="_blank" href="{{.Target }}" title="{{.Title}}">
+            <div class="product-image" style="background-image: url({{ .Image }})"></div>
+        </a>
+        <div class="product-title">
+            <a target="_blank" href="{{.Target }}" title="{{.Title}}">{{ .Title}}</a>
+        </div>
+
+        <div class="product-brand">{{ $.Brand }}</div>
+    </div>
+    {{end}}
+</div>
+</div>
+{{end}}

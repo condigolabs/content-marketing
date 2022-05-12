@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cloud.google.com/go/bigquery"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/condigolabs/content-marketing/models"
 	"github.com/nlpcloud/nlpcloud-go"
@@ -23,6 +24,8 @@ type PayloadTemplate struct {
 type ParamGeneration struct {
 	Model              string
 	Lang               string
+	Label              string
+	LabelId            int64
 	InputText          string
 	MinLength          int
 	MaxLength          int
@@ -129,11 +132,11 @@ func (dw *ConcreteIntent) GenerateDocument(p DocHeadlines) (models.GenerateData,
 
 }
 
-func (dw *ConcreteIntent) GenerateArticles(p ParamGeneration) (models.GenerateData, error) {
+func (dw *ConcreteIntent) GenerateArticles(p ParamGeneration) (models.GeneratedArticle, error) {
 
-	client, model, lang := dw.createClient(p.Model, p.Lang)
+	client, _, _ := dw.createClient(p.Model, p.Lang)
 
-	r, err := client.Generation(nlpcloud.GenerationParams{
+	params := nlpcloud.GenerationParams{
 		Text:               p.InputText,
 		MinLength:          &p.MinLength,
 		MaxLength:          &p.MaxLength,
@@ -151,19 +154,26 @@ func (dw *ConcreteIntent) GenerateArticles(p ParamGeneration) (models.GenerateDa
 		RepetitionPenalty:  &p.RepetitionPenalty,
 		LengthPenalty:      &p.LengthPenalty,
 		RemoveEndSequence:  &p.RemoveEndSequence,
-	})
+	}
+
+	j, err := json.Marshal(params)
+	logrus.Infof("%s", j)
+
+	r, err := client.Generation(params)
 	if err != nil {
 		logrus.WithError(err).Errorf("Failed to generate documents")
-		return models.GenerateData{}, err
+		return models.GeneratedArticle{}, err
 	}
 	logrus.Infof("Generated  {%s} ", r.GeneratedText)
 
-	return models.GenerateData{
-		InputText:   []string{p.InputText},
-		Model:       model,
-		Language:    lang,
-		Method:      "Generation",
-		Description: r.GeneratedText,
+	return models.GeneratedArticle{
+		Runtime:       0,
+		Locale:        p.Lang,
+		Subject:       p.InputText,
+		LabelId:       p.LabelId,
+		Label:         p.Label,
+		GeneratedText: r.GeneratedText,
+		Generator:     fmt.Sprintf("%s:%s:%s", p.Model, p.Lang, "generate"),
 	}, nil
 
 }
