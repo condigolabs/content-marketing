@@ -6,6 +6,8 @@ type GeneratedArticle struct {
 	Runtime       int64    `json:"runtime"`
 	Locale        string   `json:"locale"`
 	Subject       string   `json:"subject"`
+	LabelId       int64    `json:"labelId"`
+	Label         string   `json:"label"`
 	GeneratedText string   `json:"body"`
 	GeneratedHtml string   `json:"html"`
 	Images        []string `json:"images"`

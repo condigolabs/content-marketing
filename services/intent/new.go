@@ -60,5 +60,9 @@ func New() (Intent, error) {
 		logrus.WithError(err).Errorf("error creating table")
 	}
 
+	err = ret.CreateSchema(&models.GeneratedArticle{})
+	if err != nil {
+		logrus.WithError(err).Errorf("error creating table")
+	}
 	return ret, nil
 }
